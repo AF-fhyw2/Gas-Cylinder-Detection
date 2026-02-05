@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCBA 50組監測系統 - 指揮官加強版</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 全域定義 */
+:root {
+    --primary-red: #d32f2f;
+    --primary-blue: #1976d2;
+    --primary-yellow: #fbc02d;
+    --accent-yellow: #ffcc00;
+    --success-green: #4caf50;
+    --bg-color: #121417;
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --text-dark: #2c3e50;
+    --text-light: #ecf0f1;
+}
+
+body { 
+    font-family: 'Noto Sans TC', '微軟正黑體', sans-serif; 
+    background: linear-gradient(135deg, #1a1c20 0%, #2c3e50 100%);
+    background-attachment: fixed;
+    color: var(--text-dark);
+    padding: 15px; 
+    margin: 0;
+}
+
+/* 標題美化 */
+.main-header {
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.main-header h1 {
+    font-size: 2.2em;
+    margin: 10px 0;
+    letter-spacing: 2px;
+}
+
+.main-header span {
+    color: var(--accent-yellow);
+}
+
+/* 分組容器樣式 */
+.group-section {
+    margin-bottom: 40px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    color: white;
+}
+
+.group-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 小組(Team)區塊樣式 */
+.team-container {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    color: white;
+    margin-bottom: 10px;
+    padding: 0 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.team-info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.team-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--accent-yellow);
+}
+
+/* 任務標籤樣式 */
+.mission-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+.mission-tag {
+    padding: 3px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mission-tag:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.mission-tag.active {
+    background: var(--accent-yellow);
+    color: #000;
+    border-color: var(--accent-yellow);
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+}
+
+.add-member-btn, .add-team-btn {
+    background: white;
+    color: black;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.add-team-btn:hover, .add-member-btn:hover {
+    transform: scale(1.05);
+    background: var(--accent-yellow);
+}
+
+/* 各色群組專屬邊框 */
+.group-yellow { border-top: 6px solid var(--primary-yellow); }
+.group-yellow .group-header { background: var(--primary-yellow); color: #000; }
+
+.group-blue { border-top: 6px solid var(--primary-blue); }
+.group-blue .group-header { background: var(--primary-blue); }
+
+.group-red { border-top: 6px solid var(--primary-red); }
+.group-red .group-header { background: var(--primary-red); }
+
+/* 容器配置 - 使用 auto-fill 確保單人時卡片不拉伸 */
+.container { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(280px, 320px)); 
+    gap: 12px; 
+    max-width: 100%; 
+}
+
+/* 組員單元卡片 - 增加 max-width 確保尺寸固定 */
+.unit { 
+    background: var(--card-bg); 
+    padding: 10px; 
+    border-radius: 12px; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+    position: relative;
+    overflow: hidden;
+    display: none;
+    max-width: 320px; /* 固定寬度上限 */
+}
+
+.unit.active { display: block; }
+
+.unit.danger-zone { 
+    background-color: #fff5f5; 
+    border: 3px solid #ff5252; 
+    box-shadow: 0 0 20px rgba(255, 82, 82, 0.4);
+}
+
+.unit.team-warning {
+    border: 3px solid #ff9800;
+    background-color: #fffde7;
+    animation: pulse-warning 1.5s infinite;
+}
+
+@keyframes pulse-warning {
+    0% { box-shadow: 0 0 0px rgba(255, 152, 0, 0); }
+    50% { box-shadow: 0 0 15px rgba(255, 152, 0, 0.6); }
+    100% { box-shadow: 0 0 0px rgba(255, 152, 0, 0); }
+}
+
+.unit.evacuated { 
+    background-color: #f1f8e9; 
+    border-color: #8bc34a; 
+    opacity: 0.9; 
+}
+
+/* 組別標題 - 縮小字體 */
+.unit h2 { 
+    margin: 0 0 8px 0; 
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    font-size: 1.1em;
+    color: #1a1c20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 成員資訊區塊 */
+.member-info { 
+    display: flex; 
+    gap: 8px; 
+    background: #f8f9fa; 
+    padding: 8px; 
+    border-radius: 8px; 
+    margin-bottom: 8px; 
+    border-left: 5px solid #34495e;
+}
+
+.avatar-box { 
+    width: 45px; 
+    height: 60px; 
+    background-color: #e0e0e0; 
+    border-radius: 6px; 
+    overflow: hidden; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    border: 1px solid #ddd; 
+    flex-shrink: 0; 
+    cursor: zoom-in; 
+}
+
+.avatar-box img { width: 100%; height: 100%; object-fit: cover; }
+
+.id-input-area { flex: 1; font-size: 0.8em; }
+.id-input-area input {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin-bottom: 3px;
+    font-size: 12px;
+}
+
+.scan-btn { 
+    cursor: pointer; 
+    font-size: 1.1em; 
+    padding: 1px 5px; 
+    background: #fff; 
+    border: 1px solid #ccc;
+    border-radius: 4px; 
+}
+
+.data-text-area { font-size: 0.85em; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.data-item { color: #555; }
+.data-label { font-weight: bold; color: #333; margin-right: 2px; }
+
+/* 時間戳與進度條 */
+.time-stamp-area { 
+    font-size: 0.8em; 
+    background: #34495e; 
+    color: white;
+    padding: 4px; 
+    border-radius: 6px; 
+    margin-bottom: 8px; 
+    display: flex; 
+    justify-content: space-around; 
+}
+.time-val { font-weight: bold; color: #ffeb3b; }
+
+.progress-container { 
+    width: 100%; 
+    background-color: #ddd; 
+    border-radius: 15px; 
+    margin: 5px 0; 
+    height: 16px; 
+}
+.progress-bar { 
+    height: 100%; 
+    width: 0%; 
+    border-radius: 15px;
+    transition: width 0.5s ease-out; 
+    background-color: var(--success-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+/* 控制與輸入區 */
+.settings, .input-section { 
+    margin-bottom: 6px; 
+    font-size: 0.8em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.status-display { 
+    background: #eef2f7; 
+    padding: 6px; 
+    border-radius: 8px; 
+    margin-bottom: 8px; 
+    border: 1px solid #d1d9e6;
+}
+.status-display p { margin: 2px 0; font-size: 0.8em; }
+
+/* 圖表 */
+.chart-container { 
+    width: 100%; 
+    height: 140px; 
+    margin-bottom: 8px; 
+    background: white; 
+    border-radius: 8px; 
+    padding: 3px; 
+    box-sizing: border-box; 
+}
+
+/* 底部記錄區 */
+.records { display: flex; gap: 6px; }
+.history, .interval { 
+    flex: 1; 
+    background: #ffffff; 
+    padding: 6px; 
+    border-radius: 8px; 
+    font-size: 0.65em; 
+    height: 80px; 
+    overflow-y: auto;
+    border: 1px solid #eee;
+}
+
+/* 警報與通用按鈕 */
+.alert { 
+    margin-top: 5px; padding: 4px; 
+    font-size: 13px; font-weight: bold; text-align: center; 
+    color: white; background-color: #f44336; border-radius: 6px; 
+    animation: blink 0.8s infinite;
+}
+
+button { padding: 3px 8px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 11px; }
+.evac-btn { background: #2e7d32; color: white; border: none; font-weight: bold; }
+
+/* 全域控制台 */
+#global_controls { 
+    text-align: center; 
+    background: rgba(0,0,0,0.85); 
+    backdrop-filter: blur(10px);
+    color: white; 
+    padding: 15px; 
+    border-radius: 15px; 
+    margin: 0 auto 30px auto; 
+    max-width: 1200px; 
+    display: flex; 
+    justify-content: center; 
+    gap: 15px; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+}
+
+#control_collapse_btn { display: none; background: var(--accent-yellow); color: black; border: none; padding: 5px 15px; font-weight: bold; border-radius: 20px; }
+
+/* 側邊導航樣式優化 */
+#side-drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background-color: #1a1c20; color: white; transition: 0.3s; z-index: 10001; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); padding-top: 20px; }
+#side-drawer.open { left: 0; }
+#menu-toggle-btn { position: fixed; top: 20px; left: 20px; z-index: 10002; background: var(--primary-red); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+
+#drawer-links {
+    padding: 10px 20px;
+}
+.drawer-member-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.9em;
+}
+.drawer-member-team {
+    color: var(--accent-yellow);
+    font-weight: bold;
+    font-size: 0.8em;
+    margin-bottom: 3px;
+}
+.drawer-member-info {
+    display: flex;
+    justify-content: space-between;
+}
+.drawer-member-task {
+    color: #4db6ac;
+    font-size: 0.8em;
+}
+
+/* 選擇人員 Modal */
+#selector_overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); z-index: 30000;
+    display: none; justify-content: center; align-items: center;
+}
+.selector-box { background: white; padding: 30px; border-radius: 20px; max-width: 600px; width: 95%; text-align: center; }
+.available-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+.available-item { padding: 8px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;}
+.available-item:hover { background: #eee; }
+
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+.hidden { display: none !important; }
+
+@media (max-width: 600px) {
+    #global_controls { flex-direction: column; padding: 10px; margin: 0 10px 20px 10px; }
+    #control_collapse_btn { display: block; order: -1; align-self: flex-end; }
+    #global_controls.collapsed > *:not(#control_collapse_btn):not(.control-title) { display: none !important; }
+    #global_controls.collapsed { flex-direction: row; justify-content: space-between; }
+}
+
+.good { color: #2e7d32; font-weight: bold; }
+.warn { color: #f57c00; font-weight: bold; }
+.bad { color: #d32f2f; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div id="selector_overlay">
+    <div class="selector-box">
+        <h3 id="selector_title">加入人員至</h3>
+        <p>請選擇一位組員：</p>
+        <div class="available-list" id="available_list_container"></div>
+        <button onclick="closeSelector()" style="margin-top: 20px; width: 100%; background: #eee;">取消</button>
+    </div>
+</div>
+
+<div id="avatar-lightbox" onclick="closeLightbox()" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: none; justify-content: center; align-items: center; cursor: zoom-out;">
+    <img id="lightbox-img" src="" style="max-width: 85%; max-height: 85%; border: 5px solid white; border-radius: 10px;">
+    <div id="avatar-lightbox-info" style="position: absolute; bottom: 5%; color: white; font-size: 1.5em;"></div>
+</div>
+
+<button id="menu-toggle-btn" onclick="toggleDrawer()">☰ 戰情清單</button>
+<div id="drawer-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: none;" onclick="toggleDrawer()"></div>
+
+<nav id="side-drawer">
+    <div style="padding: 20px; border-bottom: 2px solid var(--accent-yellow);">
+        <div style="font-size: 1.2em; font-weight: bold; color: var(--accent-yellow);">📊 戰情即時摘要</div>
+        <div style="margin-top: 10px;">內部作業：<span id="stat_inCount">0</span> 名</div>
+        <div style="color: #ff5252;">異常警報：<span id="stat_alertCount">0</span> 件</div>
+    </div>
+    <div id="drawer-links"></div>
+</nav>
+
+<div class="main-header">
+    <h1>🚒 SCBA <span>戰術指揮監測系統</span></h1>
+    <p style="opacity: 0.8;">Smart Breathing Apparatus Monitoring System (Team Mode)</p>
+</div>
+
+<div id="qr-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9998; display: none;" onclick="stopScanner()"></div>
+<div id="qr-reader-wrapper" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; z-index: 9999; background: white; padding: 20px; border-radius: 15px; display: none;">
+    <div id="qr-reader" style="width: 100%;"></div>
+    <button onclick="stopScanner()" style="width: 100%; margin-top: 10px; background: #f44336; color: white; border:none; padding:10px;">關閉掃描器</button>
+</div>
+
+<div id="global_controls">
+    <button id="control_collapse_btn" onclick="toggleControls()">收合控制台</button>
+    <div class="control-title" style="font-size: 1.1em; border-right: 1px solid #555; padding-right: 15px;">控制台</div>
+    <button onclick="initAllSystems()" style="background: var(--accent-yellow); color:#000;">🔄 全體重設</button>
+    <button onclick="updateAllCharts()" style="background: #00bcd4; color:white; border:none;">📊 更新所有圖表</button>
+    <button onclick="exportAllToCSV()" style="background: var(--success-green); color:white; border:none;">💾 匯出任務報告</button>
+    <button onclick="injectTestDataABCD()" style="background: #e91e63; color:white; border:none;">🧪 自動測試(1, 2)</button>
+    
+    <div style="background: #333; padding: 5px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 0.9em;">人員名單匯入:</span>
+        <input type="file" id="csvFileInput" accept=".csv" style="font-size: 12px; width: 140px; color:white;">
+    </div>
+</div>
+
+<div class="group-section group-yellow" id="group_yellow">
+    <div class="group-header">
+        <h2>🟡 黃組 指揮區</h2>
+        <button class="add-team-btn" onclick="addNewTeam('yellow')">➕ 新增作戰小組</button>
+    </div>
+    <div id="teams_yellow"></div>
+</div>
+
+<div class="group-section group-blue" id="group_blue">
+    <div class="group-header">
+        <h2>🔵 藍組 指揮區</h2>
+        <button class="add-team-btn" onclick="addNewTeam('blue')">➕ 新增作戰小組</button>
+    </div>
+    <div id="teams_blue"></div>
+</div>
+
+<div class="group-section group-red" id="group_red">
+    <div class="group-header">
+        <h2>🔴 紅組 指揮區</h2>
+        <button class="add-team-btn" onclick="addNewTeam('red')">➕ 新增作戰小組</button>
+    </div>
+    <div id="teams_red"></div>
+</div>
+
+<div id="unit-container" style="display:none;"></div>
+
+<script>
+/* 核心變數與團隊定義 */
+let memberDatabase = {};
+const team = Array.from({length: 50}, (_, i) => (i + 1).toString());
+let assignedUnits = {}; // id -> {color, teamId}
+let teamCounters = { yellow: 0, blue: 0, red: 0 };
+let teamsData = {}; // teamId -> [memberIds]
+
+/* 初始化人員卡片 */
+const container = document.getElementById('unit-container');
+team.forEach(id => {
+    const html = `
+        <div class="unit" id="unit${id}_box">
+            <h2>
+                <span><span class="unit-team-tag" id="${id}_teamTag" style="font-size:0.7em; color:#666; margin-right:5px;"></span> 組員 ${id}</span>
+                <label style="font-size: 0.5em; font-weight: normal; background: #eee; padding: 2px 6px; border-radius: 4px; color: #333; display: flex; align-items: center; gap: 3px;">
+                    <input type="checkbox" id="${id}_voiceEnable" checked onchange="checkGlobalAlarm()"> 語音
+                </label>
+            </h2>
+            <div id="${id}_linkedAlert" class="alert hidden" style="background:#ff9800; margin-bottom:10px;">⚠️ 同組警報：請協同撤離</div>
+
+            <div class="member-info">
+                <div class="avatar-box" onclick="openLightbox('${id}')">
+                    <img id="${id}_avatarImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="頭像">
+                </div>
+                <div class="id-input-area">
+                    編號：<input type="text" id="${id}_memberId" placeholder="輸入" style="width:40px" onchange="systems['${id}'].loadMember()">
+                    <button onclick="systems['${id}'].loadMember()" style="padding:1px 3px;">載入</button>
+                    <span class="scan-btn" onclick="startScanner('${id}')">📷</span>
+                    <div class="data-text-area">
+                        <div class="data-item"><span class="data-label">姓名:</span> <span id="${id}_name">--</span></div>
+                        <div class="data-item"><span class="data-label">職稱:</span> <span id="${id}_rank">--</span></div>
+                        <div class="data-item"><span class="data-label">單位:</span> <span id="${id}_unit">--</span></div>
+                        <div class="data-item"><span class="data-label">血型:</span> <span id="${id}_blood">--</span></div>
+                        <div class="data-item" style="grid-column: span 2;"><span class="data-label">備註:</span> <span id="${id}_note">--</span></div>
+                        <div class="data-item" style="display:none;"><span id="${id}_gender">--</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="time-stamp-area">
+                <span>進入：<span id="${id}_timeIn" class="time-val">--:--:--</span></span>
+                <span>撤離：<span id="${id}_timeOut" class="time-val" style="color:#4caf50;">--:--:--</span></span>
+            </div>
+
+            <div class="progress-container">
+                <div id="${id}_progressBar" class="progress-bar">100%</div>
+            </div>
+
+            <div class="settings">
+                初始 <input type="number" id="${id}_initialPressure" style="width:40px">
+                容量 <input type="number" id="${id}_cylinderCapacity" value="6.8" style="width:35px">
+                <button onclick="systems['${id}'].initializeSystem()" style="background:#34495e; color:white; border:none;">GO</button>
+            </div>
+
+            <div class="input-section">
+                讀數 <input type="number" id="${id}_currentPressure" style="width:45px; border:1px solid #34495e;">
+                <button onclick="systems['${id}'].readPressure()" style="background:#34495e; color:white; border:none;">讀取</button>
+                <button class="evac-btn" onclick="systems['${id}'].manualExit()">撤離</button>
+            </div>
+
+            <div class="status-display">
+                <p>空氣：<span id="${id}_remainingAir">0</span> / <span id="${id}_totalAir">0</span> L (<span id="${id}_percentText">100</span>%)</p>
+                <p>預估：<span id="${id}_remainingTime" style="font-weight:bold; color:var(--primary-red);">0</span> min</p>
+                <p>換氣：<span id="${id}_avgRate">0</span> L/min <span id="${id}_avgTag"></span></p>
+                <div style="display:none;">Max <span id="${id}_maxVDisp">--</span> Min <span id="${id}_minVDisp">--</span></div>
+                <div id="${id}_alertBox" class="alert hidden"></div>
+            </div>
+
+            <div class="chart-container"><canvas id="${id}_dataChart"></canvas></div>
+            <div class="records">
+                <div class="history"><ul id="${id}_historyList" style="list-style:none; padding:0;"></ul></div>
+                <div class="interval"><ul id="${id}_intervalList" style="list-style:none; padding:0;"></ul></div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+});
+
+/* 小組管理邏輯 */
+function addNewTeam(color) {
+    teamCounters[color]++;
+    const teamId = `${color}_team_${teamCounters[color]}`;
+    teamsData[teamId] = [];
+    
+    const teamHtml = `
+        <div class="team-container" id="${teamId}">
+            <div class="team-header">
+                <div class="team-info-block">
+                    <div class="team-title">🛡️ ${getTeamLabel(color)} - 第 ${teamCounters[color]} 小組</div>
+                    <div class="mission-tags">
+                        <div class="mission-tag" onclick="this.classList.toggle('active'); updateDashboardStats();">(1):人命搜索/救援</div>
+                        <div class="mission-tag" onclick="this.classList.toggle('active'); updateDashboardStats();">(2):火點搜索/攻擊</div>
+                        <div class="mission-tag" onclick="this.classList.toggle('active'); updateDashboardStats();">(3):通風排煙</div>
+                    </div>
+                </div>
+                <button class="add-member-btn" onclick="openSelector('${color}', '${teamId}')">＋ 加入組員</button>
+            </div>
+            <div class="container" id="${teamId}_members"></div>
+        </div>
+    `;
+    document.getElementById(`teams_${color}`).insertAdjacentHTML('beforeend', teamHtml);
+}
+
+function getTeamLabel(color) {
+    return { yellow: '黃組', blue: '藍組', red: '紅組' }[color];
+}
+
+let selectorTarget = { color: '', teamId: '' };
+function openSelector(color, teamId) {
+    selectorTarget = { color, teamId };
+    document.getElementById('selector_title').textContent = `加入組員至 ${getTeamLabel(color)} 小組`;
+    const container = document.getElementById('available_list_container');
+    container.innerHTML = '';
+    
+    team.forEach(id => {
+        if (!assignedUnits[id]) {
+            const div = document.createElement('div');
+            div.className = 'available-item';
+            div.textContent = id;
+            div.onclick = () => addMemberToTeam(id, color, teamId);
+            container.appendChild(div);
+        }
+    });
+    document.getElementById('selector_overlay').style.display = 'flex';
+}
+
+function closeSelector() { document.getElementById('selector_overlay').style.display = 'none'; }
+
+function addMemberToTeam(id, color, teamId) {
+    assignedUnits[id] = { color, teamId };
+    teamsData[teamId].push(id);
+    
+    const card = document.getElementById(`unit${id}_box`);
+    card.classList.add('active');
+    document.getElementById(`${id}_teamTag`).textContent = `[${teamCounters[color]}組]`;
+    document.getElementById(`${teamId}_members`).appendChild(card);
+    
+    closeSelector();
+    updateDashboardStats();
+}
+
+function checkTeamAlertLinks() {
+    Object.keys(teamsData).forEach(teamId => {
+        const memberIds = teamsData[teamId];
+        const teamHasAlarm = memberIds.some(id => systems[id].alarmLatched);
+        
+        memberIds.forEach(id => {
+            const linkedAlert = document.getElementById(`${id}_linkedAlert`);
+            const box = document.getElementById(`unit${id}_box`);
+            
+            if (teamHasAlarm && !systems[id].isEvacuated) {
+                if (!systems[id].alarmLatched) {
+                    linkedAlert.classList.remove('hidden');
+                    box.classList.add('team-warning');
+                } else {
+                    linkedAlert.classList.add('hidden');
+                    box.classList.remove('team-warning');
+                }
+            } else {
+                linkedAlert.classList.add('hidden');
+                box.classList.remove('team-warning');
+            }
+        });
+    });
+}
+
+class SCBAUnit {
+    constructor(prefix) {
+        this.prefix = prefix;
+        this.box = document.getElementById(`unit${prefix}_box`);
+        this.progressBar = document.getElementById(`${prefix}_progressBar`);
+        this.alertBox = document.getElementById(`${prefix}_alertBox`);
+        this.memberIdInput = document.getElementById(`${prefix}_memberId`);
+        this.avatarImg = document.getElementById(`${prefix}_avatarImg`);
+        this.cylinderCapacityInput = document.getElementById(`${prefix}_cylinderCapacity`);
+        this.initialPressureInput = document.getElementById(`${prefix}_initialPressure`);
+        this.currentPressureInput = document.getElementById(`${prefix}_currentPressure`);
+        this.history = []; this.intervals = []; this.chart = null;
+        this.alarmLatched = false; this.isEvacuated = false;
+        this.timeIn = "--:--:--"; this.timeOut = "--:--:--";
+        this.initP_Danger = false; this.personalLimits = null; 
+    }
+    resetUI() {
+        this.memberIdInput.value = ''; this.memberIdInput.disabled = false;
+        this.avatarImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        ['name', 'rank', 'unit', 'blood', 'note'].forEach(k => document.getElementById(`${this.prefix}_${k}`).textContent = '--');
+        document.getElementById(`${this.prefix}_timeIn`).textContent = '--:--:--';
+        document.getElementById(`${this.prefix}_timeOut`).textContent = '--:--:--';
+        this.initialPressureInput.value = ''; this.currentPressureInput.value = '';
+        this.isEvacuated = false; this.alarmLatched = false; this.initP_Danger = false;
+        this.box.classList.remove('danger-zone', 'evacuated', 'team-warning');
+        this.alertBox.classList.add('hidden'); this.history = []; this.intervals = [];
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+        document.getElementById(`${this.prefix}_historyList`).innerHTML = '';
+        document.getElementById(`${this.prefix}_intervalList`).innerHTML = '';
+        this.updateDisplay(0, 0); this.updateProgress(0);
+        document.getElementById(`${this.prefix}_avgRate`).textContent = '0';
+        document.getElementById(`${this.prefix}_avgTag`).textContent = '';
+    }
+    loadMember() {
+        const id = this.memberIdInput.value.trim(); if (!id) return;
+        this.memberIdInput.disabled = true;
+        if (memberDatabase[id]) {
+            const m = memberDatabase[id];
+            ['name', 'rank', 'unit', 'blood', 'note'].forEach(k => document.getElementById(`${this.prefix}_${k}`).textContent = m[k] || '--');
+            this.personalLimits = { max: parseFloat(m.max_ventilation), min: parseFloat(m.min_ventilation) };
+        }
+        this.avatarImg.src = `${id}.jpg`;
+        this.avatarImg.onerror = () => this.avatarImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        updateDashboardStats(); // 確保資料載入後更新側邊欄
+    }
+    judge(rate) {
+        if (this.personalLimits && !isNaN(this.personalLimits.max)) {
+            if (rate > this.personalLimits.max) return { text: '🚨 換氣過高', cls: 'bad' };
+            if (rate < this.personalLimits.min && rate > 5) return { text: '⚠️ 呼吸微弱', cls: 'warn' };
+            return { text: '🟢 正常', cls: 'good' };
+        }
+        if (rate >= 80) return { text: '🚨 換氣過高', cls: 'bad' };
+        return { text: '🟢 正常', cls: 'good' };
+    }
+    initializeSystem() {
+        const inputP = +this.initialPressureInput.value;
+        if (isNaN(inputP) || inputP <= 0) { alert("請輸入初始壓力"); return; }
+        this.alarmLatched = false; this.initP_Danger = false;
+        let msgs = [];
+        if (inputP <= 270) { this.alarmLatched = true; this.initP_Danger = true; msgs.push(`⚠️ 初始壓力不足: ${inputP}`); }
+        this.timeIn = getClockTime();
+        document.getElementById(`${this.prefix}_timeIn`).textContent = this.timeIn;
+        this.cylinderCapacity = +this.cylinderCapacityInput.value;
+        this.initialPressure = inputP;
+        const totalAir = this.cylinderCapacity * inputP;
+        this.history = [{ time: 0, pressure: inputP, air: totalAir }];
+        this.updateAlertUI(msgs);
+        this.box.classList.toggle('danger-zone', this.alarmLatched);
+        this.updateProgress(inputP); this.updateDisplay(totalAir, Math.round(totalAir/50));
+        updateDashboardStats(); checkGlobalAlarm(); checkTeamAlertLinks();
+    }
+    readPressure() {
+        if (this.isEvacuated) return;
+        const p = +this.currentPressureInput.value;
+        if (!p || p <= 0) return;
+        const last = this.history[this.history.length-1];
+        if (p > last.pressure) { alert("壓力不能高於前次紀錄"); return; }
+        const air = p * this.cylinderCapacity;
+        const rate = (last.air - air) / 5;
+        const j = this.judge(rate);
+        this.intervals.push({ time: this.history.length * 5, rate: rate, judge: j });
+        this.history.push({ time: this.history.length * 5, pressure: p, air: air });
+        this.alarmLatched = false;
+        let msgs = [];
+        if (this.initP_Danger) { this.alarmLatched = true; msgs.push(`⚠️ 初始不足: ${this.initialPressure}`); }
+        if (j.cls === 'bad') { this.alarmLatched = true; msgs.push(`${j.text}: ${rate.toFixed(1)}`); }
+        if (p <= 50) { this.alarmLatched = true; msgs.push(`⚠️ 殘氣危險: ${p}`); }
+        this.updateAlertUI(msgs);
+        this.box.classList.toggle('danger-zone', this.alarmLatched);
+        const avg = this.intervals.reduce((s, i) => s + i.rate, 0) / this.intervals.length;
+        document.getElementById(`${this.prefix}_avgRate`).textContent = avg.toFixed(1);
+        const avgJ = this.judge(avg);
+        const tag = document.getElementById(`${this.prefix}_avgTag`);
+        tag.textContent = avgJ.text; tag.className = avgJ.cls;
+        this.updateDisplay(air, avg > 0 ? Math.round(air/avg) : "--");
+        this.updateProgress(p); this.renderLists();
+        updateDashboardStats(); checkGlobalAlarm(); checkTeamAlertLinks();
+        this.currentPressureInput.value = '';
+    }
+    updateAlertUI(msgs) {
+        if (msgs.length > 0) { this.alertBox.innerHTML = msgs.join('<br>'); this.alertBox.classList.remove('hidden'); }
+        else { this.alertBox.classList.add('hidden'); }
+    }
+    updateProgress(p) {
+        const percent = this.initialPressure > 0 ? Math.round((p / this.initialPressure) * 100) : 0;
+        this.progressBar.style.width = percent + '%';
+        this.progressBar.textContent = percent + '%';
+        this.progressBar.style.backgroundColor = percent > 50 ? '#4caf50' : (percent > 25 ? '#ff9800' : '#f44336');
+    }
+    updateDisplay(air, time) {
+        document.getElementById(`${this.prefix}_totalAir`).textContent = (this.initialPressure * this.cylinderCapacity || 0).toFixed(0);
+        document.getElementById(`${this.prefix}_remainingAir`).textContent = air.toFixed(0);
+        document.getElementById(`${this.prefix}_remainingTime`).textContent = time;
+    }
+    renderLists() {
+        document.getElementById(`${this.prefix}_historyList`).innerHTML = this.history.map(h => `<li>${h.time}分 | ${h.pressure} bar</li>`).reverse().join('');
+        document.getElementById(`${this.prefix}_intervalList`).innerHTML = this.intervals.map(i => `<li>${i.time}分 | ${i.rate.toFixed(1)} L/min <span class="${i.judge.cls}">${i.judge.text}</span></li>`).reverse().join('');
+    }
+    manualExit() {
+        if (confirm(`確定組員 ${this.prefix} 撤出？`)) {
+            this.isEvacuated = true;
+            this.timeOut = getClockTime();
+            document.getElementById(`${this.prefix}_timeOut`).textContent = this.timeOut;
+            this.box.classList.add('evacuated'); this.box.classList.remove('danger-zone', 'team-warning');
+            this.alertBox.classList.add('hidden'); this.alarmLatched = false;
+            document.getElementById(`${this.prefix}_linkedAlert`).classList.add('hidden');
+            updateDashboardStats(); checkGlobalAlarm(); checkTeamAlertLinks();
+        }
+    }
+    showChart() {
+        const ctx = document.getElementById(`${this.prefix}_dataChart`).getContext('2d');
+        if (this.chart) this.chart.destroy();
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.history.map(h => h.time + "m"),
+                datasets: [
+                    { label: '壓力', data: this.history.map(h => h.pressure), borderColor: '#2196f3', yAxisID: 'y', tension: 0.3 },
+                    { label: '換氣', data: [0, ...this.intervals.map(i => i.rate)], borderColor: '#9c27b0', yAxisID: 'y1', tension: 0.3 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'left', min: 0, max: 350 }, y1: { position: 'right', min: 0, max: 150 } } }
+        });
+    }
+}
+
+const systems = {};
+team.forEach(id => { systems[id] = new SCBAUnit(id); });
+
+function getClockTime() {
+    const now = new Date();
+    return now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
+}
+function toggleDrawer() {
+    const d = document.getElementById('side-drawer');
+    const o = document.getElementById('drawer-overlay');
+    d.classList.toggle('open');
+    o.style.display = d.classList.contains('open') ? 'block' : 'none';
+}
+function toggleControls() {
+    const controls = document.getElementById('global_controls');
+    const btn = document.getElementById('control_collapse_btn');
+    const isCollapsed = controls.classList.toggle('collapsed');
+    btn.textContent = isCollapsed ? '展開控制台' : '收合控制台';
+}
+
+const SirenPlayer = {
+    audioCtx: null, oscillator: null, gainNode: null, interval: null,
+    start() {
+        if (this.oscillator) return;
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this.oscillator = this.audioCtx.createOscillator();
+        this.gainNode = this.audioCtx.createGain();
+        this.oscillator.type = 'square';
+        this.oscillator.connect(this.gainNode);
+        this.gainNode.connect(this.audioCtx.destination);
+        this.gainNode.gain.value = 0.03;
+        this.oscillator.start();
+        let high = true;
+        this.interval = setInterval(() => {
+            if (this.audioCtx) this.oscillator.frequency.setValueAtTime(high ? 960 : 770, this.audioCtx.currentTime);
+            high = !high;
+        }, 500);
+    },
+    stop() { if (this.oscillator) { try{this.oscillator.stop();}catch(e){} this.oscillator = null; clearInterval(this.interval); } }
+};
+
+function checkGlobalAlarm() {
+    let anyAlarm = Object.values(systems).some(s => s.alarmLatched && document.getElementById(`${s.prefix}_voiceEnable`).checked);
+    if (anyAlarm) SirenPlayer.start(); else SirenPlayer.stop();
+}
+
+/**
+ * 更新側邊欄列表與儀表板統計
+ */
+function updateDashboardStats() {
+    let inCount = 0; let alertCount = 0;
+    let drawerHtml = "";
+
+    // 依序檢查每個系統單元
+    Object.values(systems).forEach(s => {
+        const isWorking = !s.isEvacuated && s.timeIn !== "--:--:--";
+        if (isWorking) inCount++;
+        if (s.alarmLatched) alertCount++;
+
+        // 如果人員正在作業中或已加入小組，則產生側邊欄項目
+        if (assignedUnits[s.prefix] && !s.isEvacuated) {
+            const teamInfo = assignedUnits[s.prefix];
+            const name = document.getElementById(`${s.prefix}_name`).textContent;
+            const displayName = (name === "--") ? `組員 ${s.prefix}` : name;
+            
+            // 獲取該小組目前啟用的任務標籤
+            const teamEl = document.getElementById(teamInfo.teamId);
+            let taskCodes = [];
+            if (teamEl) {
+                const tags = teamEl.querySelectorAll('.mission-tag.active');
+                tags.forEach(tag => {
+                    const match = tag.textContent.match(/^\((\d)\)/);
+                    if (match) taskCodes.push(`(${match[1]})`);
+                });
+            }
+            const tasksDisplay = taskCodes.length > 0 ? taskCodes.join('') : "(無任務)";
+
+            drawerHtml += `
+                <div class="drawer-member-item">
+                    <div class="drawer-member-team">${getTeamLabel(teamInfo.color)} - 第 ${teamInfo.teamId.split('_')[2]} 小組</div>
+                    <div class="drawer-member-info">
+                        <span>👤 ${displayName}</span>
+                        <span class="drawer-member-task">任務：${tasksDisplay}</span>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    document.getElementById('stat_inCount').textContent = inCount;
+    document.getElementById('stat_alertCount').textContent = alertCount;
+    document.getElementById('drawer-links').innerHTML = drawerHtml;
+}
+
+function initAllSystems() {
+    if (confirm("全體重設？將清空小組分配與所有數據。")) {
+        location.reload(); 
+    }
+}
+
+function updateAllCharts() { Object.values(systems).forEach(s => { if(s.history.length > 0) s.showChart(); }); }
+
+function injectTestDataABCD() {
+    addNewTeam('yellow');
+    addMemberToTeam('1', 'yellow', 'yellow_team_1');
+    addMemberToTeam('2', 'yellow', 'yellow_team_1');
+    setTimeout(() => { systems['1'].initialPressureInput.value = 300; systems['1'].initializeSystem(); }, 500);
+    setTimeout(() => { systems['2'].initialPressureInput.value = 300; systems['2'].initializeSystem(); }, 1000);
+}
+
+function exportAllToCSV() {
+    let csv = ["組別,小組編號,組員,編號,姓名,單位,進入時間,撤離時間,壓力(bar),狀態"];
+    Object.values(systems).forEach(s => {
+        if (s.timeIn !== "--:--:--") {
+            const teamInfo = assignedUnits[s.prefix] || { color: '未分配', teamId: '--' };
+            const name = document.getElementById(`${s.prefix}_name`).textContent;
+            csv.push(`${getTeamLabel(teamInfo.color)},${teamInfo.teamId},${s.prefix},${s.memberIdInput.value},${name},${document.getElementById(`${s.prefix}_unit`).textContent},${s.timeIn},${s.isEvacuated ? s.timeOut : '作業中'},${s.history[s.history.length-1].pressure},${s.alarmLatched ? '異常' : '正常'}`);
+        }
+    });
+    const blob = new Blob(["\ufeff" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `SCBA_Mission_Report_${Date.now()}.csv`;
+    link.click();
+}
+
+let html5QrCode = null;
+async function startScanner(prefix) {
+    document.getElementById('qr-overlay').style.display = 'block';
+    document.getElementById('qr-reader-wrapper').style.display = 'block';
+    if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+    await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+        document.getElementById(`${prefix}_memberId`).value = text;
+        systems[prefix].loadMember(); stopScanner();
+    }, () => {});
+}
+async function stopScanner() {
+    if (html5QrCode) { await html5QrCode.stop(); html5QrCode = null; }
+    document.getElementById('qr-overlay').style.display = 'none';
+    document.getElementById('qr-reader-wrapper').style.display = 'none';
+}
+
+document.getElementById('csvFileInput').addEventListener('change', function(e) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const lines = e.target.result.split(/\r?\n/);
+        for (let i = 1; i < lines.length; i++) {
+            const c = lines[i].split(',');
+            if (c[0]) memberDatabase[c[0].trim()] = { name: c[1], rank: c[3], unit: c[4], blood: c[5], note: c[6], max_ventilation: c[7], min_ventilation: c[8] };
+        }
+        alert("名單載入成功");
+    };
+    reader.readAsText(e.target.files[0]);
+});
+
+if (window.innerWidth <= 600) toggleControls();
+</script>
+</body> 
+</html>
